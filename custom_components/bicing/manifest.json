@@ -1,11 +1,11 @@
 {
   "domain": "bicing",
-  "name": "Estat del Bicing",
-  "codeowners": ["@osanchezdm"],
+  "name": "Bicing Status",
+  "codeowners": ["@ocr99"],
   "config_flow": true,
-  "documentation": "https://github.com/oscarsanchezdm/bicing-hassio",
+  "documentation": "https://github.com/ocr99/ha-bicing",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/oscarsanchezdm/bicing-hassio/issues",
+  "issue_tracker": "https://github.com/ocr99/ha-bicing/issues",
   "requirements": [],
   "version": "0.4.0"
 }
