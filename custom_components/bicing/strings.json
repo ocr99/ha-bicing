@@ -3,45 +3,65 @@
     "step": {
       "user": {
         "title": "Bicing API token",
+        "description": "Enter the token from https://opendata-ajuntament.barcelona.cat/tokens.",
         "data": {
-          "token": "Get one from https://opendata-ajuntament.barcelona.cat/tokens"
+          "token": "API token"
         }
       },
       "token": {
         "title": "Bicing API token",
+        "description": "Enter a new token from https://opendata-ajuntament.barcelona.cat/tokens.",
         "data": {
-          "token": "Get one from https://opendata-ajuntament.barcelona.cat/tokens"
+          "token": "API token"
         }
       },
       "station": {
         "title": "Stations to monitor",
         "data": {
-          "station_ids": "Select the stations you want to monitor"
+          "station_ids": "Stations"
         }
       },
       "reauth_confirm": {
-        "title": "Reconfigure the token",
-        "description": "The token has expired and a new one needs to be generated at https://opendata-ajuntament.barcelona.cat/tokens"
+        "title": "Reauthenticate Bicing",
+        "description": "The Bicing API token has been rejected. A new token is required from https://opendata-ajuntament.barcelona.cat/tokens."
       },
       "reconfigure": {
         "title": "Stations to monitor",
         "data": {
-          "station_ids": "Select the stations you want to monitor"
+          "station_ids": "Stations"
         }
       }
     },
     "error": {
-      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
-      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
-      "unknown": "[%key:common::config_flow::error::unknown%]"
+      "cannot_connect": "Unable to connect to the Bicing API",
+      "invalid_auth": "The Bicing API token is invalid",
+      "unknown": "Unexpected error"
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
-      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
-      "status_error": "There was an error communicating with the server.",
-      "client_error": "There was an error communicating with the server. Client error.",
-      "token_error": "There was an error communicating with the Bicing API. Check whether the token is valid.",
-      "data_updated": "The monitored stations have been saved."
+      "already_configured": "Bicing is already configured",
+      "reauth_successful": "The Bicing token has been updated",
+      "reconfigure_successful": "The Bicing stations have been updated",
+      "status_error": "The Bicing API returned an error",
+      "client_error": "Unable to communicate with the Bicing API",
+      "token_error": "The Bicing API token is invalid or expired",
+      "cannot_connect": "Unable to connect to the Bicing API",
+      "data_updated": "The monitored stations have been saved"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_bikes": {
+        "name": "Bikes available"
+      },
+      "ebikes": {
+        "name": "Electric bikes available"
+      },
+      "mechanical_bikes": {
+        "name": "Mechanical bikes available"
+      },
+      "available_docks": {
+        "name": "Docks available"
+      }
     }
   }
 }

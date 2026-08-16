@@ -8,10 +8,11 @@ TOKEN = "token"
 UPDATE_INTERVAL = 10  # minuts
 REQUEST_TIMEOUT_SECONDS = 15
 RETRY_ATTEMPTS = 2
+MAX_RETRY_AFTER_SECONDS = 3600
 
 # Es manté l'últim estat conegut de les estacions durant errors transitoris
 # de l'API. Passat aquest període sense una actualització correcta, les
-# entitats passen a estat "unknown".
+# entitats passen a no estar disponibles mitjançant CoordinatorEntity.
 STALE_DATA_TTL_HOURS = 1
 
 CONF_STATION_IDS = "station_ids"

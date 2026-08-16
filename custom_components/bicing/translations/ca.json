@@ -3,45 +3,65 @@
     "step": {
       "user": {
         "title": "Token de l'API del Bicing",
+        "description": "Introduïu el token obtingut a https://opendata-ajuntament.barcelona.cat/tokens.",
         "data": {
-          "token": "Obteniu-lo a https://opendata-ajuntament.barcelona.cat/tokens"
+          "token": "Token de l'API"
         }
       },
       "token": {
         "title": "Token de l'API del Bicing",
+        "description": "Introduïu un token nou obtingut a https://opendata-ajuntament.barcelona.cat/tokens.",
         "data": {
-          "token": "Obteniu-lo a https://opendata-ajuntament.barcelona.cat/tokens"
+          "token": "Token de l'API"
         }
       },
       "station": {
         "title": "Estacions monitoritzades",
         "data": {
-          "station_ids": "Seleccioneu les estacions a monitoritzar"
+          "station_ids": "Estacions"
         }
       },
       "reauth_confirm": {
-        "title": "Reconfigurar el token",
-        "description": "El token ha caducat i cal que en genereu un de nou. Podeu fer-ho des de https://opendata-ajuntament.barcelona.cat/tokens"
+        "title": "Reautenticar Bicing",
+        "description": "El token de l'API del Bicing ha estat rebutjat. Cal generar-ne un de nou a https://opendata-ajuntament.barcelona.cat/tokens."
       },
       "reconfigure": {
         "title": "Estacions monitoritzades",
         "data": {
-          "station_ids": "Seleccioneu les estacions a monitoritzar"
+          "station_ids": "Estacions"
         }
       }
     },
     "error": {
-      "cannot_connect": "No s'ha pogut connectar",
-      "invalid_auth": "Autenticació invàlida",
-      "unknown": "Error inesperat"
+      "cannot_connect": "No s'ha pogut connectar amb l'API del Bicing",
+      "invalid_auth": "El token de l'API del Bicing no és vàlid",
+      "unknown": "S'ha produït un error inesperat"
     },
     "abort": {
-      "already_configured": "La integració ja s'ha configurat",
-      "reauth_successful": "El token és vàlid.",
-      "status_error": "S'ha produït un error comunicant-se amb el servidor.",
-      "client_error": "S'ha produït un error comunicant-se amb el servidor. Error del client.",
-      "token_error": "S'ha produït un error comunicant amb l'API del Bicing. Revisar si el token és vàlid.",
-      "data_updated": "S'han desat les estacions a monitoritzar."
+      "already_configured": "El Bicing ja està configurat",
+      "reauth_successful": "El token del Bicing s'ha actualitzat",
+      "reconfigure_successful": "Les estacions del Bicing s'han actualitzat",
+      "status_error": "L'API del Bicing ha retornat un error",
+      "client_error": "No s'ha pogut comunicar amb l'API del Bicing",
+      "token_error": "El token de l'API del Bicing no és vàlid o ha caducat",
+      "cannot_connect": "No s'ha pogut connectar amb l'API del Bicing",
+      "data_updated": "S'han desat les estacions monitoritzades"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_bikes": {
+        "name": "Bicicletes disponibles"
+      },
+      "ebikes": {
+        "name": "Bicicletes elèctriques disponibles"
+      },
+      "mechanical_bikes": {
+        "name": "Bicicletes mecàniques disponibles"
+      },
+      "available_docks": {
+        "name": "Ancoratges disponibles"
+      }
     }
   }
 }

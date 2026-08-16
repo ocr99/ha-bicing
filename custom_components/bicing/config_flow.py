@@ -1,140 +1,109 @@
 """Config flow for Bicing."""
 from __future__ import annotations
 
-import logging
 from typing import Any
 
 import aiohttp
+import voluptuous as vol
 
-import voluptuous as vol  # type: ignore
-
-from homeassistant import config_entries  # type: ignore
-from homeassistant.data_entry_flow import FlowResult  # type: ignore
-from homeassistant.const import STATE_UNAVAILABLE
-from homeassistant.helpers import entity_registry as er
+from homeassistant import config_entries
+from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.entity_registry import async_entries_for_config_entry
-from homeassistant.helpers.selector import (  # type: ignore
+from homeassistant.helpers.selector import (
+    SelectOptionDict,
     SelectSelector,
     SelectSelectorConfig,
-    SelectOptionDict,
     SelectSelectorMode,
     TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 
 from .const import CONF_STATION_IDS, DOMAIN, TOKEN
 from .lib.bike_stations_api import BicingApiError, BicingAuthError, BikeStationApi
 
-_LOGGER = logging.getLogger(__name__)
-
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    VERSION = 2
+    """Handle a config flow for Bicing."""
+
+    VERSION = 3
 
     def __init__(self) -> None:
         self.token: str | None = None
-        self.station_ids: list[str] = []
-        self.config_entry: config_entries.ConfigEntry | None = None
 
     async def _fetch_stations(self, token: str):
-        """Consulta l'API amb la sessió HTTP compartida de HA."""
+        """Fetch station metadata using HA's shared HTTP session."""
         session = async_get_clientsession(self.hass)
-        return await BikeStationApi.get_bike_stations(session, token)
+        return await BikeStationApi(session, token).get_bike_stations()
+
+    @staticmethod
+    def _station_schema(stations, defaults: list[str] | None = None) -> vol.Schema:
+        """Build the station selector schema."""
+        options = [
+            SelectOptionDict(label=f"{station.id} - {station.name}", value=station.id)
+            for station in stations
+        ]
+        selector = SelectSelector(
+            SelectSelectorConfig(
+                options=options,
+                multiple=True,
+                mode=SelectSelectorMode.DROPDOWN,
+            )
+        )
+        if defaults is not None:
+            return vol.Schema(
+                {vol.Required(CONF_STATION_IDS, default=defaults): selector}
+            )
+        return vol.Schema({vol.Required(CONF_STATION_IDS): selector})
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Ask for the API token."""
         if user_input is not None:
             self.token = user_input[TOKEN]
             return await self.async_step_station()
 
-        schema = vol.Schema({vol.Required(TOKEN): TextSelector()})
-        return self.async_show_form(step_id="user", data_schema=schema, last_step=False)
-
-    async def async_step_station(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        if user_input is not None:
-            self.station_ids = list(user_input[CONF_STATION_IDS])
-
-            await self.async_set_unique_id(DOMAIN)
-            self._abort_if_unique_id_configured()
-
-            return self.async_create_entry(
-                title="Bicing",
-                data={TOKEN: self.token, CONF_STATION_IDS: self.station_ids},
-            )
-
-        try:
-            stations = await self._fetch_stations(self.token)
-        except (BicingAuthError, aiohttp.ContentTypeError):
-            return self.async_abort(reason="token_error")
-        except aiohttp.ServerConnectionError:
-            return self.async_abort(reason="status_error")
-        except (aiohttp.ClientError, TimeoutError):
-            return self.async_abort(reason="client_error")
-        except BicingApiError:
-            return self.async_abort(reason="status_error")
-
-        options = [
-            SelectOptionDict(label=f"{s.id} - {s.name}", value=str(s.id)) for s in stations
-        ]
-
         schema = vol.Schema(
             {
-                vol.Required(CONF_STATION_IDS): SelectSelector(
-                    SelectSelectorConfig(
-                        options=options, multiple=True, mode=SelectSelectorMode.DROPDOWN
-                    )
+                vol.Required(TOKEN): TextSelector(
+                    TextSelectorConfig(type=TextSelectorType.PASSWORD)
                 )
             }
         )
-        return self.async_show_form(step_id="station", data_schema=schema)
+        return self.async_show_form(step_id="user", data_schema=schema)
 
-    async def async_step_token(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Demana (o revalida) el token, usat pel flux de reautenticació."""
-        schema = vol.Schema({vol.Required(TOKEN): TextSelector()})
+    async def async_step_station(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Select stations to monitor."""
+        if user_input is not None:
+            await self.async_set_unique_id(DOMAIN)
+            self._abort_if_unique_id_configured()
+            return self.async_create_entry(
+                title="Bicing",
+                data={TOKEN: self.token},
+                options={CONF_STATION_IDS: [str(value) for value in user_input[CONF_STATION_IDS]]},
+            )
 
-        if user_input is None:
-            return self.async_show_form(step_id="token", data_schema=schema)
-
-        assert self.config_entry is not None
-        new_token = user_input[TOKEN]
-
-        # Es valida el token abans de desar-lo, en comptes d'assumir que és
-        # correcte i descobrir-ho al proper cicle d'actualització.
         try:
-            await self._fetch_stations(new_token)
-        except (BicingAuthError, aiohttp.ContentTypeError):
-            return self.async_show_form(
-                step_id="token", data_schema=schema, errors={"base": "invalid_auth"}
-            )
-        except aiohttp.ServerConnectionError:
-            return self.async_show_form(
-                step_id="token", data_schema=schema, errors={"base": "cannot_connect"}
-            )
-        except (aiohttp.ClientError, TimeoutError):
-            return self.async_show_form(
-                step_id="token", data_schema=schema, errors={"base": "cannot_connect"}
-            )
-        except BicingApiError:
-            return self.async_show_form(
-                step_id="token", data_schema=schema, errors={"base": "unknown"}
-            )
+            stations = await self._fetch_stations(self.token or "")
+        except BicingAuthError:
+            return self.async_abort(reason="token_error")
+        except (aiohttp.ClientError, TimeoutError, BicingApiError):
+            return self.async_abort(reason="cannot_connect")
 
-        return self.async_update_reload_and_abort(
-            self.config_entry,
-            data={
-                TOKEN: new_token,
-                CONF_STATION_IDS: self.config_entry.data[CONF_STATION_IDS],
-            },
+        return self.async_show_form(
+            step_id="station",
+            data_schema=self._station_schema(stations),
         )
 
     async def async_step_reauth(self, entry_data: dict[str, Any]) -> FlowResult:
-        """Perform reauth upon an API authentication error."""
-        self.config_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"]
-        )
+        """Perform reauthentication after an API authentication error."""
+        await self.async_set_unique_id(DOMAIN)
+        self._abort_if_unique_id_mismatch()
         return await self.async_step_reauth_confirm()
 
-    async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        """Dialog that informs the user that reauth is required."""
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Explain that reauthentication is required."""
         if user_input is None:
             return self.async_show_form(
                 step_id="reauth_confirm",
@@ -142,68 +111,71 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
         return await self.async_step_token()
 
-    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None) -> FlowResult:
-        self.config_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"]
-        )
-        assert self.config_entry is not None
-
-        estacions_actuals = self.config_entry.data[CONF_STATION_IDS]
-        token_actual = self.config_entry.data[TOKEN]
-
-        if user_input is not None:
-            station_ids = list(user_input[CONF_STATION_IDS])
-            self.station_ids = station_ids
-
-            self.hass.config_entries.async_update_entry(
-                self.config_entry,
-                data={TOKEN: token_actual, CONF_STATION_IDS: station_ids},
-                options=self.config_entry.options,
-            )
-
-            # Neteja d'entitats antigues que hagin quedat "unavailable" en
-            # desseleccionar estacions. S'usa l'accés modern al registre
-            # d'entitats (`entity_registry.async_get(hass)`); l'antic
-            # `hass.helpers.entity_registry.async_get()` està deprecat des
-            # de fa temps i s'ha anat retirant de Home Assistant Core.
-            entity_registry = er.async_get(self.hass)
-            entity_entries = async_entries_for_config_entry(
-                entity_registry, self.config_entry.entry_id
-            )
-
-            for entity_entry in entity_entries:
-                state = self.hass.states.get(entity_entry.entity_id)
-                if state is not None and state.state != STATE_UNAVAILABLE:
-                    continue
-                entity_registry.async_remove(entity_entry.entity_id)
-
-            return self.async_abort(reason="data_updated")
-
-        try:
-            stations = await self._fetch_stations(token_actual)
-        except (BicingAuthError, aiohttp.ContentTypeError):
-            return self.async_abort(reason="token_error")
-        except aiohttp.ServerConnectionError:
-            return self.async_abort(reason="status_error")
-        except (aiohttp.ClientError, TimeoutError):
-            return self.async_abort(reason="client_error")
-        except BicingApiError:
-            return self.async_abort(reason="status_error")
-
-        options = [
-            SelectOptionDict(label=f"{s.id} - {s.name}", value=str(s.id)) for s in stations
-        ]
-
+    async def async_step_token(self, user_input: dict[str, Any] | None = None) -> FlowResult:
+        """Validate and save a replacement token."""
         schema = vol.Schema(
             {
-                vol.Required(
-                    CONF_STATION_IDS, default=list(estacions_actuals)
-                ): SelectSelector(
-                    SelectSelectorConfig(
-                        options=options, multiple=True, mode=SelectSelectorMode.DROPDOWN
-                    )
+                vol.Required(TOKEN): TextSelector(
+                    TextSelectorConfig(type=TextSelectorType.PASSWORD)
                 )
             }
         )
 
-        return self.async_show_form(step_id="reconfigure", data_schema=schema)
+        if user_input is None:
+            return self.async_show_form(step_id="token", data_schema=schema)
+
+        new_token = user_input[TOKEN]
+        try:
+            await self._fetch_stations(new_token)
+        except BicingAuthError:
+            return self.async_show_form(
+                step_id="token",
+                data_schema=schema,
+                errors={"base": "invalid_auth"},
+            )
+        except (aiohttp.ClientError, TimeoutError, BicingApiError):
+            return self.async_show_form(
+                step_id="token",
+                data_schema=schema,
+                errors={"base": "cannot_connect"},
+            )
+
+        entry = self._get_reauth_entry()
+        return self.async_update_reload_and_abort(
+            entry,
+            data_updates={TOKEN: new_token},
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Reconfigure the stations to monitor."""
+        entry = self._get_reconfigure_entry()
+        await self.async_set_unique_id(DOMAIN)
+        self._abort_if_unique_id_mismatch()
+        current_station_ids = list(entry.options.get(CONF_STATION_IDS, []))
+
+        if user_input is not None:
+            self.hass.config_entries.async_update_entry(
+                entry,
+                options={
+                    **entry.options,
+                    CONF_STATION_IDS: [
+                        str(value) for value in user_input[CONF_STATION_IDS]
+                    ],
+                },
+            )
+            await self.hass.config_entries.async_reload(entry.entry_id)
+            return self.async_abort(reason="data_updated")
+
+        try:
+            stations = await self._fetch_stations(entry.data[TOKEN])
+        except BicingAuthError:
+            return self.async_abort(reason="token_error")
+        except (aiohttp.ClientError, TimeoutError, BicingApiError):
+            return self.async_abort(reason="cannot_connect")
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self._station_schema(stations, current_station_ids),
+        )

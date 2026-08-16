@@ -1,4 +1,4 @@
-__pycache__
+__pycache__/
 *.py[cod]
 .venv/
 venv/
@@ -8,3 +8,8 @@ venv/
 .DS_Store
 .idea/
 .vscode/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
