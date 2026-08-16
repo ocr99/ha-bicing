@@ -1,0 +1,47 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Bicing API token",
+        "data": {
+          "token": "Get one from https://opendata-ajuntament.barcelona.cat/tokens"
+        }
+      },
+      "token": {
+        "title": "Bicing API token",
+        "data": {
+          "token": "Get one from https://opendata-ajuntament.barcelona.cat/tokens"
+        }
+      },
+      "station": {
+        "title": "Stations to monitor",
+        "data": {
+          "station_ids": "Select the stations you want to monitor"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reconfigure the token",
+        "description": "The token has expired and a new one needs to be generated at https://opendata-ajuntament.barcelona.cat/tokens"
+      },
+      "reconfigure": {
+        "title": "Stations to monitor",
+        "data": {
+          "station_ids": "Select the stations you want to monitor"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]",
+      "invalid_auth": "[%key:common::config_flow::error::invalid_auth%]",
+      "unknown": "[%key:common::config_flow::error::unknown%]"
+    },
+    "abort": {
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "reauth_successful": "[%key:common::config_flow::abort::reauth_successful%]",
+      "status_error": "There was an error communicating with the server.",
+      "client_error": "There was an error communicating with the server. Client error.",
+      "token_error": "There was an error communicating with the Bicing API. Check whether the token is valid.",
+      "data_updated": "The monitored stations have been saved."
+    }
+  }
+}
