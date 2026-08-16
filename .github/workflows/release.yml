@@ -128,4 +128,4 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           TAG="v${VERSION}"
-          gh release create "$TAG"             --verify-tag             --title "Bicing $TAG"             --generate-notes
+          gh release create "$TAG"             --verify-tag             --title "$TAG"             --generate-notes
