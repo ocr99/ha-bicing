@@ -19,7 +19,7 @@ from homeassistant.helpers.selector import (
     TextSelectorType,
 )
 
-from .const import CONF_STATION_IDS, DOMAIN, TOKEN
+from .const import CONF_STATION_IDS, DOMAIN, TOKEN, TOKEN_URL
 from .lib.bike_stations_api import BicingApiError, BicingAuthError, BikeStationApi
 
 
@@ -69,7 +69,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
             }
         )
-        return self.async_show_form(step_id="user", data_schema=schema)
+        return self.async_show_form(
+            step_id="user",
+            data_schema=schema,
+            description_placeholders={"token_url": TOKEN_URL},
+        )
 
     async def async_step_station(self, user_input: dict[str, Any] | None = None) -> FlowResult:
         """Select stations to monitor."""
@@ -108,6 +112,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             return self.async_show_form(
                 step_id="reauth_confirm",
                 data_schema=vol.Schema({}),
+                description_placeholders={"token_url": TOKEN_URL},
             )
         return await self.async_step_token()
 
@@ -122,7 +127,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         if user_input is None:
-            return self.async_show_form(step_id="token", data_schema=schema)
+            return self.async_show_form(
+                step_id="token",
+                data_schema=schema,
+                description_placeholders={"token_url": TOKEN_URL},
+            )
 
         new_token = user_input[TOKEN]
         try:
@@ -132,12 +141,14 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 step_id="token",
                 data_schema=schema,
                 errors={"base": "invalid_auth"},
+                description_placeholders={"token_url": TOKEN_URL},
             )
         except (aiohttp.ClientError, TimeoutError, BicingApiError):
             return self.async_show_form(
                 step_id="token",
                 data_schema=schema,
                 errors={"base": "cannot_connect"},
+                description_placeholders={"token_url": TOKEN_URL},
             )
 
         entry = self._get_reauth_entry()

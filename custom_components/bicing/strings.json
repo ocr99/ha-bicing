@@ -3,14 +3,14 @@
     "step": {
       "user": {
         "title": "Bicing API token",
-        "description": "Enter the token from https://opendata-ajuntament.barcelona.cat/tokens.",
+        "description": "Enter the token from {token_url}.",
         "data": {
           "token": "API token"
         }
       },
       "token": {
         "title": "Bicing API token",
-        "description": "Enter a new token from https://opendata-ajuntament.barcelona.cat/tokens.",
+        "description": "Enter a new token from {token_url}.",
         "data": {
           "token": "API token"
         }
@@ -23,7 +23,7 @@
       },
       "reauth_confirm": {
         "title": "Reauthenticate Bicing",
-        "description": "The Bicing API token has been rejected. A new token is required from https://opendata-ajuntament.barcelona.cat/tokens."
+        "description": "The Bicing API token has been rejected. A new token is required from {token_url}."
       },
       "reconfigure": {
         "title": "Stations to monitor",

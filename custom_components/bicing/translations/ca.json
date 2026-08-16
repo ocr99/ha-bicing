@@ -3,14 +3,14 @@
     "step": {
       "user": {
         "title": "Token de l'API del Bicing",
-        "description": "Introduïu el token obtingut a https://opendata-ajuntament.barcelona.cat/tokens.",
+        "description": "Introduïu el token obtingut a {token_url}.",
         "data": {
           "token": "Token de l'API"
         }
       },
       "token": {
         "title": "Token de l'API del Bicing",
-        "description": "Introduïu un token nou obtingut a https://opendata-ajuntament.barcelona.cat/tokens.",
+        "description": "Introduïu un token nou obtingut a {token_url}.",
         "data": {
           "token": "Token de l'API"
         }
@@ -23,7 +23,7 @@
       },
       "reauth_confirm": {
         "title": "Reautenticar Bicing",
-        "description": "El token de l'API del Bicing ha estat rebutjat. Cal generar-ne un de nou a https://opendata-ajuntament.barcelona.cat/tokens."
+        "description": "El token de l'API del Bicing ha estat rebutjat. Cal generar-ne un de nou a {token_url}."
       },
       "reconfigure": {
         "title": "Estacions monitoritzades",
