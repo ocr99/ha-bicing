@@ -59,7 +59,16 @@ Les estacions es poden modificar posteriorment des de **Reconfigurar** a la fitx
 
 Les noves versions es publiquen com a releases de GitHub i HACS les detecta com a actualitzacions disponibles. Per als usuaris que instal·len la integració amb HACS, no cal copiar manualment els fitxers de cada nova versió.
 
-El repositori utilitza tags de Git amb el format `vX.Y.Z` (per exemple, `v0.6.0`). El workflow de release comprova que el tag coincideix amb la versió de `manifest.json` i crea automàticament la GitHub Release després de passar els tests i Hassfest.
+La release es crea des de **GitHub → Actions → Release → Run workflow**. Només cal introduir la versió, per exemple `1.3.0`.
+
+El workflow:
+1. Actualitza automàticament `custom_components/bicing/manifest.json`.
+2. Executa els tests i Hassfest.
+3. Fa el commit de la nova versió.
+4. Crea i puja el tag `v1.3.0`.
+5. Crea la GitHub Release amb generated notes.
+
+No cal editar manualment la versió del `manifest.json` ni crear la tag a mà.
 
 ## Entitats
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- El workflow de release permite introducir la versión desde GitHub Actions.
+- `manifest.json` se actualiza automáticamente antes de crear la release.
+- Eliminado el workflow de Hassfest duplicado.
+
 ## 1.2.0
 
 - Afegits badges de validació, HACS, release i llicència al README.
