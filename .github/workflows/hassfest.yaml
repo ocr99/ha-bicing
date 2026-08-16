@@ -23,4 +23,6 @@ jobs:
       - name: Install test dependencies
         run: pip install pytest pytest-homeassistant-custom-component
       - name: Run tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: pytest -q
