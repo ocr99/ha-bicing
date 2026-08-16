@@ -177,5 +177,5 @@ jobs:
           TAG="v${VERSION}"
           gh release create "$TAG" \
             --verify-tag \
-            --title "ha-bicing$TAG" \
+            --title "ha-bicing $TAG" \
             --notes-file release-notes.md
