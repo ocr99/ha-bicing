@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.4.0 - 2026-08-16
+
+<!-- Release notes generated using configuration in .github/release.yml at master -->
+
+
+
+**Full Changelog**: https://github.com/ocr99/ha-bicing/compare/v1.3.0...v1.4.0
+
 ## 1.2.0
 
 - Afegits badges de validació, HACS, release i llicència al README.
