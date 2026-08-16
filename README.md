@@ -1,5 +1,10 @@
 # Bicing per al Home Assistant
 
+[![Validate](https://github.com/ocr99/ha-bicing/actions/workflows/validate.yml/badge.svg)](https://github.com/ocr99/ha-bicing/actions/workflows/validate.yml)
+[![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://www.hacs.xyz/)
+[![Latest Release](https://img.shields.io/github/v/release/ocr99/ha-bicing?sort=semver)](https://github.com/ocr99/ha-bicing/releases)
+[![License](https://img.shields.io/github/license/ocr99/ha-bicing)](https://github.com/ocr99/ha-bicing/blob/master/LICENSE)
+
 Integració per a Home Assistant que mostra l'estat de les estacions del Bicing de Barcelona mitjançant els datasets de dades obertes de l'Ajuntament de Barcelona.
 
 ## Funcionalitats
@@ -11,18 +16,29 @@ Integració per a Home Assistant que mostra l'estat de les estacions del Bicing 
   - Bicicletes elèctriques disponibles.
   - Bicicletes mecàniques disponibles.
   - Ancoratges disponibles.
+- Cada estació es representa com un dispositiu de Home Assistant.
 - Actualització coordinada cada 10 minuts.
+- Una sola petició de dades d'estat per actualització, independentment del nombre d'estacions configurades.
 - Reutilització de la sessió HTTP de Home Assistant.
 - Cache de l'últim estat durant errors transitoris durant un màxim d'1 hora.
 - Reautenticació automàtica des de la interfície quan el token és rebutjat.
+- Gestió de `429 Too Many Requests` i `Retry-After`.
 - Diagnòstics amb el token redactat.
 - Migració automàtica de la configuració de versions anteriors.
 
 ## Instal·lació amb HACS
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=oscarsanchezdm&repository=bicing-hassio&category=integration)
+### Instal·lació directa
 
-També pots afegir aquest repositori manualment com a repositori personalitzat d'HACS del tipus **Integration**.
+[![Obre Bicing a HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=ocr99&repository=ha-bicing&category=integration)
+
+Prem el botó anterior des del mateix dispositiu on tens Home Assistant o afegeix manualment el repositori `ocr99/ha-bicing` a HACS com a repositori personalitzat de tipus **Integration**.
+
+### Instal·lació manual
+
+Copia la carpeta `custom_components/bicing` dins de `config/custom_components/bicing` i reinicia Home Assistant.
+
+Després ves a **Configuració → Dispositius i serveis → Afegeix integració** i busca **Bicing Status**.
 
 ## Configuració
 
@@ -38,6 +54,12 @@ Després, a Home Assistant:
 4. Selecciona les estacions que vols monitoritzar.
 
 Les estacions es poden modificar posteriorment des de **Reconfigurar** a la fitxa de la integració.
+
+## Actualitzacions
+
+Les noves versions es publiquen com a releases de GitHub i HACS les detecta com a actualitzacions disponibles. Per als usuaris que instal·len la integració amb HACS, no cal copiar manualment els fitxers de cada nova versió.
+
+El repositori utilitza tags de Git amb el format `vX.Y.Z` (per exemple, `v0.6.0`). El workflow de release comprova que el tag coincideix amb la versió de `manifest.json` i crea automàticament la GitHub Release després de passar els tests i Hassfest.
 
 ## Entitats
 
@@ -73,6 +95,13 @@ No comparteixis mai un fitxer de backup de Home Assistant o el contingut de `.st
 
 La integració utilitza un `DataUpdateCoordinator` compartit per totes les entitats de Bicing. La informació estàtica de les estacions es carrega una sola vegada durant la inicialització i l'estat es consulta en bloc.
 
+Per validar els canvis localment:
+
+```bash
+python -m pip install --upgrade pip pytest pytest-homeassistant-custom-component
+pytest -q
+```
+
 Abans d'obrir un issue, comprova els logs de Home Assistant i, quan sigui possible, adjunta els diagnòstics de la integració sense compartir mai el token.
 
 ## Eliminació
@@ -80,3 +109,7 @@ Abans d'obrir un issue, comprova els logs de Home Assistant i, quan sigui possib
 Per eliminar la integració, ves a **Configuració → Dispositius i serveis → Bicing Status → ... → Elimina**.
 
 Això eliminarà la configuració i les entitats associades a la integració.
+
+## Llicència
+
+Aquest projecte es distribueix sota la llicència MIT.

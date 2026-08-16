@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  validate:
+    name: Validate release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest pytest-homeassistant-custom-component
+      - name: Run tests
+        run: pytest -q
+      - name: Run Hassfest
+        uses: home-assistant/actions/hassfest@master
+      - name: Verify manifest version matches tag
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import sys
+
+          tag_version = os.environ["TAG"].removeprefix("v")
+          with open("custom_components/bicing/manifest.json", encoding="utf-8") as file:
+              manifest = json.load(file)
+          manifest_version = manifest["version"]
+          if manifest_version != tag_version:
+              print(
+                  f"Version mismatch: manifest.json={manifest_version!r}, tag={tag_version!r}",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+          print(f"Release version: {manifest_version}")
+          PY
+
+  release:
+    name: Create GitHub Release
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --verify-tag \
+            --title "Bicing $TAG" \
+            --generate-notes

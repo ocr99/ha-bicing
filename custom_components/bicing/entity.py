@@ -21,4 +21,6 @@ class BicingStationEntity(CoordinatorEntity[BicingStationCoordinator]):
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self.station_id)},
             name=station_info.name if station_info else f"Bicing {self.station_id}",
+            manufacturer="Ajuntament de Barcelona",
+            model="Bicing station",
         )

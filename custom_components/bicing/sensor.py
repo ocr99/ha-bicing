@@ -89,7 +89,9 @@ class BicingStationSensor(BicingStationEntity, SensorEntity):
     @property
     def available(self) -> bool:
         """Return whether the station data is available."""
-        return super().available and self.station_id in self.coordinator.data
+        return super().available and bool(
+            self.coordinator.data and self.station_id in self.coordinator.data
+        )
 
     @property
     def native_value(self) -> int | None:

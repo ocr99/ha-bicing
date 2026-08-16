@@ -1,0 +1,35 @@
+name: Bug report
+description: Report a problem with the Bicing Home Assistant integration
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please do not include your Bicing API token, Home Assistant backups, or private diagnostics in this issue.
+  - type: input
+    id: integration_version
+    attributes:
+      label: Bicing integration version
+      placeholder: "0.6.0"
+    validations:
+      required: true
+  - type: input
+    id: home_assistant_version
+    attributes:
+      label: Home Assistant version
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Remove tokens and other sensitive data before posting logs.
+      render: text
