@@ -1,9 +1,15 @@
 # Changelog
 
-## 1.4.4 - 2026-08-17
+## 1.5.0 - 2026-08-17
 
 <!-- Release notes generated using configuration in .github/release.yml at master -->
 
+
+**Full Changelog**: https://github.com/ocr99/ha-bicing/compare/v1.4.4...v1.5.0
+
+## 1.4.4 - 2026-08-17
+
+<!-- Release notes generated using configuration in .github/release.yml at master -->
 
 
 **Full Changelog**: https://github.com/ocr99/ha-bicing/compare/v1.4.3...v1.4.4
@@ -70,6 +76,10 @@
 ## 1.0.0
 
 - Primera versió publicada
+
+## Origen del projecte
+
+Aquest projecte és un **hard-fork** de [`oscarsanchezdm/bicing-hassio`](https://github.com/oscarsanchezdm/bicing-hassio), creat per **Òscar Sánchez de Mingo**.
 
 ## Canvis respecte al repositori original (oscarsanchezdm/bicing-hassio)
 

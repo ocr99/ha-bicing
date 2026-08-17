@@ -7,6 +7,10 @@
 
 Integració per a Home Assistant que mostra l'estat de les estacions del Bicing de Barcelona mitjançant els datasets de dades obertes de l'Ajuntament de Barcelona.
 
+> **Origen i atribució**
+> 
+> Aquest projecte és un **hard-fork** del repositori original [`oscarsanchezdm/bicing-hassio`](https://github.com/oscarsanchezdm/bicing-hassio), creat per **Òscar Sánchez de Mingo**. Aquesta versió incorpora canvis i manteniment propis sobre aquesta base, mantenint l'atribució i la llicència original.
+
 ## Funcionalitats
 
 - Configuració completa des de la interfície de Home Assistant.
@@ -89,7 +93,6 @@ No comparteixis mai un fitxer de backup de Home Assistant o el contingut de `.st
 - [Informació de les estacions del Bicing](https://opendata-ajuntament.barcelona.cat/data/ca/dataset/informacio-estacions-bicing)
 - [Estat de les estacions del Bicing](https://opendata-ajuntament.barcelona.cat/data/ca/dataset/estat-estacions-bicing)
 
-![Notificació](images/notification.png)
 
 ## Desenvolupament
 
@@ -110,6 +113,12 @@ Per eliminar la integració, ves a **Configuració → Dispositius i serveis →
 
 Això eliminarà la configuració i les entitats associades a la integració.
 
+## Origen i atribució
+
+Aquest repositori és un **hard-fork** de [`oscarsanchezdm/bicing-hassio`](https://github.com/oscarsanchezdm/bicing-hassio), projecte original de `oscarsanchezdm`. Les modificacions i el manteniment d'aquest repositori són responsabilitat d'`ocr99`.
+
 ## Llicència
 
 Aquest projecte es distribueix sota la llicència MIT.
+
+La llicència original i el reconeixement de l'autor original es mantenen en aquesta derivació.
