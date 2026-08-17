@@ -63,7 +63,55 @@ async def async_setup_entry(hass: HomeAssistant, entry: BicingConfigEntry) -> bo
     _migrate_entity_unique_ids(hass, entry, coordinator)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _migrate_entity_registry_names(hass, entry, coordinator)
     return True
+
+
+def _migrate_entity_registry_names(
+    hass: HomeAssistant,
+    entry: BicingConfigEntry,
+    coordinator: BicingStationCoordinator,
+) -> None:
+    """Restore translated metric names for existing entities.
+
+    Older releases stored the station name as the entity name. Existing
+    registry entries keep that value, so simply adding translation keys does
+    not fix already-created entities. This migration only clears the legacy
+    station-name override and sets the expected translation key for our stable
+    metric unique IDs. User-customized names are preserved.
+    """
+    registry = er.async_get(hass)
+    metrics = (
+        "total_bikes",
+        "ebikes",
+        "mechanical_bikes",
+        "available_docks",
+    )
+    expected_metrics = {
+        f"{station_id}_{metric}": (station_id, metric)
+        for station_id in coordinator.station_info
+        for metric in metrics
+    }
+
+    for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        metric_info = expected_metrics.get(entity_entry.unique_id)
+        if metric_info is None or entity_entry.domain != "sensor":
+            continue
+
+        station_id, metric = metric_info
+        station_info = coordinator.station_info.get(station_id)
+        changes: dict[str, object] = {}
+
+        if entity_entry.translation_key != metric:
+            changes["translation_key"] = metric
+
+        # Only clear the legacy name when it is still exactly the station
+        # name. A user-defined custom name must never be overwritten.
+        if station_info and entity_entry.name == station_info.name:
+            changes["name"] = None
+
+        if changes:
+            registry.async_update_entity(entity_entry.entity_id, **changes)
 
 
 def _migrate_entity_unique_ids(

@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Bicing API token",
+        "description": "Enter the token from {token_url}.",
+        "data": {
+          "token": "API token"
+        }
+      },
+      "token": {
+        "title": "Bicing API token",
+        "description": "Enter a new token from {token_url}.",
+        "data": {
+          "token": "API token"
+        }
+      },
+      "station": {
+        "title": "Stations to monitor",
+        "data": {
+          "station_ids": "Stations"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate Bicing",
+        "description": "The Bicing API token has been rejected. A new token is required from {token_url}."
+      },
+      "reconfigure": {
+        "title": "Stations to monitor",
+        "data": {
+          "station_ids": "Stations"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Unable to connect to the Bicing API",
+      "invalid_auth": "The Bicing API token is invalid",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "Bicing is already configured",
+      "reauth_successful": "The Bicing token has been updated",
+      "reconfigure_successful": "The Bicing stations have been updated",
+      "status_error": "The Bicing API returned an error",
+      "client_error": "Unable to communicate with the Bicing API",
+      "token_error": "The Bicing API token is invalid or expired",
+      "cannot_connect": "Unable to connect to the Bicing API",
+      "data_updated": "The monitored stations have been saved"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_bikes": {
+        "name": "Bikes available"
+      },
+      "ebikes": {
+        "name": "Electric bikes available"
+      },
+      "mechanical_bikes": {
+        "name": "Mechanical bikes available"
+      },
+      "available_docks": {
+        "name": "Docks available"
+      }
+    }
+  }
+}
