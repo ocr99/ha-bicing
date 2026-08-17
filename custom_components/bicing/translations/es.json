@@ -1,0 +1,67 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Token de la API de Bicing",
+        "description": "Introduce el token obtenido en {token_url}.",
+        "data": {
+          "token": "Token de la API"
+        }
+      },
+      "token": {
+        "title": "Token de la API de Bicing",
+        "description": "Introduce un nuevo token obtenido en {token_url}.",
+        "data": {
+          "token": "Token de la API"
+        }
+      },
+      "station": {
+        "title": "Estaciones monitorizadas",
+        "data": {
+          "station_ids": "Estaciones"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reautenticar Bicing",
+        "description": "El token de la API de Bicing ha sido rechazado. Es necesario generar uno nuevo en {token_url}."
+      },
+      "reconfigure": {
+        "title": "Estaciones monitorizadas",
+        "data": {
+          "station_ids": "Estaciones"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "No se ha podido conectar con la API de Bicing",
+      "invalid_auth": "El token de la API de Bicing no es válido",
+      "unknown": "Se ha producido un error inesperado"
+    },
+    "abort": {
+      "already_configured": "Bicing ya está configurado",
+      "reauth_successful": "El token de Bicing se ha actualizado",
+      "reconfigure_successful": "Las estaciones de Bicing se han actualizado",
+      "status_error": "La API de Bicing ha devuelto un error",
+      "client_error": "No se ha podido comunicar con la API de Bicing",
+      "token_error": "El token de la API de Bicing no es válido o ha caducado",
+      "cannot_connect": "No se ha podido conectar con la API de Bicing",
+      "data_updated": "Se han guardado las estaciones monitorizadas"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "total_bikes": {
+        "name": "Bicicletas disponibles"
+      },
+      "ebikes": {
+        "name": "Bicicletas eléctricas disponibles"
+      },
+      "mechanical_bikes": {
+        "name": "Bicicletas mecánicas disponibles"
+      },
+      "available_docks": {
+        "name": "Anclajes disponibles"
+      }
+    }
+  }
+}
