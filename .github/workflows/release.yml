@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (for example: 1.3.0)"
+        description: "Release version (for example: 1.5.0)"
         required: true
         type: string
 
@@ -38,24 +38,65 @@ jobs:
 
           version = os.environ["VERSION"].strip()
           if not re.fullmatch(r"0|[1-9]\d*\.\d+\.\d+", version):
-              print(f"Invalid version: {version!r}. Use MAJOR.MINOR.PATCH, for example 1.3.0.", file=sys.stderr)
+              print(
+                  f"Invalid version: {version!r}. Use MAJOR.MINOR.PATCH, for example 1.5.0.",
+                  file=sys.stderr,
+              )
               raise SystemExit(1)
           print(f"Preparing release v{version}")
           PY
 
-      - name: Ensure release does not already exist
+      - name: Check manifest version
         env:
-          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import re
+          import sys
+          from pathlib import Path
+
+          def version_tuple(value: str) -> tuple[int, int, int]:
+              match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", value)
+              if not match:
+                  raise ValueError(value)
+              return tuple(map(int, match.groups()))
+
+          path = Path("custom_components/bicing/manifest.json")
+          current = json.loads(path.read_text(encoding="utf-8"))["version"]
+          requested = os.environ["VERSION"].strip()
+
+          current_v = version_tuple(current)
+          requested_v = version_tuple(requested)
+
+          if requested_v < current_v:
+              print(
+                  f"Requested version {requested} is older than manifest version {current}.",
+                  file=sys.stderr,
+              )
+              raise SystemExit(1)
+
+          if requested_v == current_v:
+              print(f"Manifest is already at {requested}; continuing (safe retry).")
+          else:
+              print(f"Manifest will be updated from {current} to {requested}.")
+          PY
+
+      - name: Determine previous release tag
+        id: previous_tag
+        env:
           VERSION: ${{ inputs.version }}
         run: |
           TAG="v${VERSION}"
-          if git rev-parse "$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG already exists." >&2
-            exit 1
-          fi
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "GitHub Release $TAG already exists." >&2
-            exit 1
+          PREVIOUS_TAG="$(git tag --sort=-version:refname | grep -Fxv "$TAG" | head -n 1 || true)"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "previous=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
+          echo "Current release tag: $TAG"
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "Previous release tag: $PREVIOUS_TAG"
+          else
+            echo "No previous release tag found."
           fi
 
       - name: Update manifest version
@@ -70,16 +111,19 @@ jobs:
           path = Path("custom_components/bicing/manifest.json")
           data = json.loads(path.read_text(encoding="utf-8"))
           data["version"] = os.environ["VERSION"].strip()
-          path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          path.write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
           PY
 
       - name: Generate GitHub release notes
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
+          PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous }}
         run: |
           TAG="v${VERSION}"
-          PREVIOUS_TAG="$(git tag --sort=-version:refname | head -n 1 || true)"
 
           if [ -n "$PREVIOUS_TAG" ]; then
             gh api "repos/${{ github.repository }}/releases/generate-notes" \
@@ -98,28 +142,40 @@ jobs:
           echo "Generated release notes:"
           cat release-notes.md
 
-      - name: Update CHANGELOG.md
+      - name: Update CHANGELOG.md (idempotent)
         env:
           VERSION: ${{ inputs.version }}
         run: |
           python - <<'PY'
           import os
+          import re
           from datetime import date
           from pathlib import Path
 
+          version = os.environ["VERSION"].strip()
           changelog = Path("CHANGELOG.md")
           notes = Path("release-notes.md").read_text(encoding="utf-8").strip()
-          version = os.environ["VERSION"].strip()
           today = date.today().isoformat()
 
           existing = changelog.read_text(encoding="utf-8") if changelog.exists() else "# Changelog\n"
           if not existing.startswith("# Changelog"):
               existing = "# Changelog\n\n" + existing
 
-          section = f"## {version} - {today}\n\n{notes}\n\n"
           prefix = "# Changelog\n"
-          remainder = existing[len(prefix):].lstrip("\n") if existing.startswith(prefix) else existing
-          changelog.write_text(f"{prefix}\n{section}{remainder}", encoding="utf-8")
+          remainder = existing[len(prefix):].lstrip("\n")
+          section = f"## {version} - {today}\n\n{notes}\n\n"
+
+          pattern = re.compile(
+              rf"^##\s+{re.escape(version)}\s+-.*?(?=^##\s|\Z)",
+              re.MULTILINE | re.DOTALL,
+          )
+
+          if pattern.search(remainder):
+              remainder = pattern.sub(section.rstrip("\n"), remainder, count=1)
+          else:
+              remainder = section + remainder
+
+          changelog.write_text(prefix + "\n" + remainder.lstrip("\n"), encoding="utf-8")
           PY
 
       - name: Validate generated changes
@@ -127,6 +183,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           python -m json.tool custom_components/bicing/manifest.json >/dev/null
+          python -m json.tool custom_components/bicing/translations/es.json >/dev/null
           python - <<'PY'
           import json
           import os
@@ -136,7 +193,10 @@ jobs:
               version = json.load(file)["version"]
           expected = os.environ["VERSION"]
           if version != expected:
-              print(f"manifest.json contains {version!r}, expected {expected!r}", file=sys.stderr)
+              print(
+                  f"manifest.json contains {version!r}, expected {expected!r}",
+                  file=sys.stderr,
+              )
               raise SystemExit(1)
           PY
 
@@ -150,7 +210,7 @@ jobs:
       - name: Run Hassfest
         uses: home-assistant/actions/hassfest@master
 
-      - name: Commit release files
+      - name: Commit release files (if needed)
         env:
           VERSION: ${{ inputs.version }}
         run: |
@@ -158,24 +218,51 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add custom_components/bicing/manifest.json CHANGELOG.md
-          git commit -m "Release ${TAG}"
-          git push origin "HEAD:${{ github.ref_name }}"
 
-      - name: Create and push tag
+          if git diff --cached --quiet; then
+            echo "No release file changes to commit; continuing (safe retry)."
+          else
+            git commit -m "Release ${TAG}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
+
+      - name: Create or reuse tag (idempotent)
         env:
           VERSION: ${{ inputs.version }}
         run: |
           TAG="v${VERSION}"
-          git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
 
-      - name: Create GitHub Release
+          if git rev-parse --verify --quiet "$TAG" >/dev/null; then
+            TAG_COMMIT="$(git rev-list -n 1 "$TAG")"
+            HEAD_COMMIT="$(git rev-parse HEAD)"
+
+            if [ "$TAG_COMMIT" != "$HEAD_COMMIT" ]; then
+              echo "Tag $TAG already exists but points to $TAG_COMMIT instead of HEAD $HEAD_COMMIT." >&2
+              echo "Refusing to move an existing release tag automatically." >&2
+              exit 1
+            fi
+
+            echo "Tag $TAG already exists and points to HEAD; continuing (safe retry)."
+          else
+            git tag -a "$TAG" -m "Release $TAG"
+            git push origin "$TAG"
+          fi
+
+      - name: Create or update GitHub Release (idempotent)
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
           TAG="v${VERSION}"
-          gh release create "$TAG" \
-            --verify-tag \
-            --title "ha-bicing $TAG" \
-            --notes-file release-notes.md
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "GitHub Release $TAG already exists; updating it instead of failing."
+            gh release edit "$TAG" \
+              --title "ha-bicing $TAG" \
+              --notes-file release-notes.md
+          else
+            gh release create "$TAG" \
+              --verify-tag \
+              --title "ha-bicing $TAG" \
+              --notes-file release-notes.md
+          fi
