@@ -84,6 +84,9 @@ class BicingStationSensor(BicingStationEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator, station_id)
         self.entity_description = description
+        # Set the translation key explicitly so the entity registry always
+        # stores the metric name (especially when upgrading existing entries).
+        self._attr_translation_key = description.translation_key
         self._attr_unique_id = f"{station_id}_{description.key}"
 
     @property

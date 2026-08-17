@@ -85,7 +85,11 @@ def _migrate_entity_unique_ids(
         new_unique_id = f"{station_id}_total_bikes"
         if registry.async_get_entity_id(entity_entry.domain, DOMAIN, new_unique_id):
             continue
-        registry.async_update_entity(entity_entry.entity_id, new_unique_id=new_unique_id)
+        registry.async_update_entity(
+            entity_entry.entity_id,
+            new_unique_id=new_unique_id,
+            translation_key="total_bikes",
+        )
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: BicingConfigEntry) -> bool:
