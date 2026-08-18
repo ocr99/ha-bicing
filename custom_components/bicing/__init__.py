@@ -109,7 +109,11 @@ def _migrate_entity_registry(
         if entity_entry.domain != "sensor":
             continue
 
-        parts = entity_entry.unique_id.rsplit("_", 1)
+        # Se usa split (primer "_") y no rsplit (último "_"): el station_id
+        # del Bicing es siempre numérico, pero las claves de métrica
+        # ("mechanical_bikes", "available_docks") contienen guiones bajos,
+        # así que cortar por el último "_" partía la clave por la mitad.
+        parts = entity_entry.unique_id.split("_", 1)
         if len(parts) != 2:
             continue
 
