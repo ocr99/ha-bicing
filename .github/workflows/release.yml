@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Release version (for example: 1.5.0)"
-        required: true
+        description: "Release version (e.g. 1.5.0). Leave empty to auto-bump the patch version (X.Y.Z -> X.Y.(Z+1))."
+        required: false
         type: string
 
 permissions:
@@ -27,28 +27,10 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Validate version input
+      - name: Resolve release version
+        id: resolve_version
         env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          python - <<'PY'
-          import os
-          import re
-          import sys
-
-          version = os.environ["VERSION"].strip()
-          if not re.fullmatch(r"0|[1-9]\d*\.\d+\.\d+", version):
-              print(
-                  f"Invalid version: {version!r}. Use MAJOR.MINOR.PATCH, for example 1.5.0.",
-                  file=sys.stderr,
-              )
-              raise SystemExit(1)
-          print(f"Preparing release v{version}")
-          PY
-
-      - name: Validate manifest version
-        env:
-          VERSION: ${{ inputs.version }}
+          REQUESTED_VERSION: ${{ inputs.version }}
         run: |
           python - <<'PY'
           import json
@@ -65,23 +47,44 @@ jobs:
 
           path = Path("custom_components/bicing/manifest.json")
           current = json.loads(path.read_text(encoding="utf-8"))["version"]
-          requested = os.environ["VERSION"].strip()
+          requested = os.environ.get("REQUESTED_VERSION", "").strip()
 
-          if version_tuple(requested) < version_tuple(current):
-              print(
-                  f"Requested version {requested} is older than manifest version {current}.",
-                  file=sys.stderr,
-              )
-              raise SystemExit(1)
+          if requested:
+              # El usuario ha indicado una versión explícita: se valida el
+              # formato y que no sea anterior a la actual (igual que antes).
+              if not re.fullmatch(r"0|[1-9]\d*\.\d+\.\d+", requested):
+                  print(
+                      f"Invalid version: {requested!r}. Use MAJOR.MINOR.PATCH, for example 1.5.0.",
+                      file=sys.stderr,
+                  )
+                  raise SystemExit(1)
+
+              if version_tuple(requested) < version_tuple(current):
+                  print(
+                      f"Requested version {requested} is older than manifest version {current}.",
+                      file=sys.stderr,
+                  )
+                  raise SystemExit(1)
+
+              resolved = requested
+          else:
+              # Campo vacío: se calcula automáticamente la siguiente versión
+              # "patch" (X.Y.Z -> X.Y.(Z+1)) a partir de manifest.json.
+              major, minor, patch = version_tuple(current)
+              resolved = f"{major}.{minor}.{patch + 1}"
+              print(f"No version provided: auto-bumping patch version {current} -> {resolved}")
 
           print(f"Current manifest version: {current}")
-          print(f"Requested release version: {requested}")
+          print(f"Resolved release version: {resolved}")
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"version={resolved}\n")
           PY
 
       - name: Check tag and release do not conflict
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
           TAG="v${VERSION}"
 
@@ -97,7 +100,7 @@ jobs:
 
       - name: Update manifest version
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
           python - <<'PY'
           import json
@@ -115,7 +118,7 @@ jobs:
 
       - name: Validate generated files
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
           python -m json.tool custom_components/bicing/manifest.json >/dev/null
           python -m json.tool custom_components/bicing/translations/es.json >/dev/null
@@ -150,7 +153,7 @@ jobs:
 
       - name: Commit release files
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
           TAG="v${VERSION}"
 
@@ -169,7 +172,7 @@ jobs:
       - name: Generate automatic release notes
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
           TAG="v${VERSION}"
 
@@ -185,7 +188,7 @@ jobs:
 
       - name: Update CHANGELOG.md
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
           python - <<'PY'
           import os
@@ -228,7 +231,7 @@ jobs:
 
       - name: Commit CHANGELOG.md
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
           TAG="v${VERSION}"
 
@@ -246,7 +249,7 @@ jobs:
 
       - name: Create tag
         env:
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
           TAG="v${VERSION}"
           git tag -a "${TAG}" -m "Release ${TAG}"
@@ -255,7 +258,7 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
+          VERSION: ${{ steps.resolve_version.outputs.version }}
         run: |
           TAG="v${VERSION}"
 
