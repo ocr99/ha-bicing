@@ -9,8 +9,9 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import slugify
 
 from .const import CONF_STATION_IDS, DOMAIN, TOKEN
 from .coordinator import BicingStationCoordinator
@@ -43,17 +44,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: BicingConfigEntry) -> bo
     session = async_get_clientsession(hass)
     api = BikeStationApi(session, entry.data[TOKEN])
     coordinator = BicingStationCoordinator(hass, entry, api, station_ids)
-
     try:
         await coordinator.async_config_entry_first_refresh()
-    except (BicingAuthError, BicingRateLimitError, BicingApiError, aiohttp.ClientError, TimeoutError) as exc:
-        # These exceptions can only reach here if the API/coordinator changes
-        # its error mapping in the future. A failed first refresh should cause
-        # Home Assistant to retry config entry setup automatically.
+    except (
+        BicingAuthError,
+        BicingRateLimitError,
+        BicingApiError,
+        aiohttp.ClientError,
+        TimeoutError,
+    ) as exc:
         from homeassistant.exceptions import ConfigEntryNotReady
 
         _LOGGER.debug("No s'ha pogut inicialitzar Bicing: %s", exc)
-        raise ConfigEntryNotReady("No s'ha pogut connectar amb l'API del Bicing.") from exc
+        raise ConfigEntryNotReady(
+            "No s'ha pogut connectar amb l'API del Bicing."
+        ) from exc
 
     entry.runtime_data = BicingRuntimeData(api=api, coordinator=coordinator)
 
@@ -63,55 +68,88 @@ async def async_setup_entry(hass: HomeAssistant, entry: BicingConfigEntry) -> bo
     _migrate_entity_unique_ids(hass, entry, coordinator)
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    _migrate_entity_registry_names(hass, entry, coordinator)
+
+    # Existing entities keep the object_id that was generated when they were
+    # first created. Normalize all Bicing sensor entity IDs to an English,
+    # language-independent format after the entities have been registered.
+    _migrate_entity_registry(hass, entry, coordinator)
+
     return True
 
 
-def _migrate_entity_registry_names(
+def _migrate_entity_registry(
     hass: HomeAssistant,
     entry: BicingConfigEntry,
     coordinator: BicingStationCoordinator,
 ) -> None:
-    """Restore translated metric names for existing entities.
+    """Normalize Bicing sensor names and entity IDs.
 
-    Older releases stored the station name as the entity name. Existing
-    registry entries keep that value, so simply adding translation keys does
-    not fix already-created entities. This migration only clears the legacy
-    station-name override and sets the expected translation key for our stable
-    metric unique IDs. User-customized names are preserved.
+    Home Assistant generates an entity_id from the translated entity name and
+    device name when an entity is first registered. That means the resulting
+    entity_id can depend on the backend language and can also differ between
+    installations. Bicing instead uses a stable English metric suffix:
+
+        sensor.c_independencia_379_available_bikes
+        sensor.c_independencia_379_available_electric_bikes
+        sensor.c_independencia_379_available_mechanical_bikes
+        sensor.c_independencia_379_available_docks
+
+    The friendly entity name remains translated through strings.json.
+    User-defined entity names are preserved; only the entity_id is normalized.
     """
     registry = er.async_get(hass)
-    metrics = (
-        "total_bikes",
-        "ebikes",
-        "mechanical_bikes",
-        "available_docks",
-    )
-    expected_metrics = {
-        f"{station_id}_{metric}": (station_id, metric)
-        for station_id in coordinator.station_info
-        for metric in metrics
+    metric_names = {
+        "total_bikes": "available_bikes",
+        "ebikes": "available_electric_bikes",
+        "mechanical_bikes": "available_mechanical_bikes",
+        "available_docks": "available_docks",
     }
 
     for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
-        metric_info = expected_metrics.get(entity_entry.unique_id)
-        if metric_info is None or entity_entry.domain != "sensor":
+        if entity_entry.domain != "sensor":
             continue
 
-        station_id, metric = metric_info
+        parts = entity_entry.unique_id.rsplit("_", 1)
+        if len(parts) != 2:
+            continue
+
+        station_id, metric = parts
+        if metric not in metric_names:
+            continue
+
         station_info = coordinator.station_info.get(station_id)
-        changes: dict[str, object] = {}
+        if station_info is None:
+            continue
+
+        station_slug = slugify(station_info.name)
+        target_entity_id = f"sensor.{station_slug}_{metric_names[metric]}"
+
+        current_entity_id = entity_entry.entity_id
+        if current_entity_id != target_entity_id:
+            existing = registry.async_get(target_entity_id)
+            if existing is None:
+                registry.async_update_entity(
+                    current_entity_id,
+                    new_entity_id=target_entity_id,
+                )
+                current_entity_id = target_entity_id
+            else:
+                _LOGGER.warning(
+                    "No se puede renombrar %s a %s porque la entidad ya existe",
+                    current_entity_id,
+                    target_entity_id,
+                )
+
+        # Older releases stored the station name as an explicit entity name.
+        # Remove only that legacy override; custom user names remain untouched.
+        if entity_entry.name == station_info.name:
+            registry.async_update_entity(current_entity_id, name=None)
 
         if entity_entry.translation_key != metric:
-            changes["translation_key"] = metric
-
-        # Only clear the legacy name when it is still exactly the station
-        # name. A user-defined custom name must never be overwritten.
-        if station_info and entity_entry.name == station_info.name:
-            changes["name"] = None
-
-        if changes:
-            registry.async_update_entity(entity_entry.entity_id, **changes)
+            registry.async_update_entity(
+                current_entity_id,
+                translation_key=metric,
+            )
 
 
 def _migrate_entity_unique_ids(
@@ -124,11 +162,9 @@ def _migrate_entity_unique_ids(
     station_names = {
         info.name: info.id for info in coordinator.station_info.values()
     }
-
     for entity_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if entity_entry.unique_id not in station_names:
             continue
-
         station_id = station_names[entity_entry.unique_id]
         new_unique_id = f"{station_id}_total_bikes"
         if registry.async_get_entity_id(entity_entry.domain, DOMAIN, new_unique_id):
@@ -149,7 +185,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Migrate old config entries to the current format."""
     if entry.version == 1:
         hass.config_entries.async_update_entry(entry, version=2)
-
     if entry.version <= 2:
         station_ids = entry.options.get(
             CONF_STATION_IDS,
@@ -157,9 +192,10 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         token = entry.data.get(TOKEN, entry.options.get(TOKEN))
         if not token or not station_ids:
-            _LOGGER.error("No s'ha pogut migrar l'entrada de Bicing: falta configuració.")
+            _LOGGER.error(
+                "No s'ha pogut migrar l'entrada de Bicing: falta configuració."
+            )
             return False
-
         hass.config_entries.async_update_entry(
             entry,
             data={TOKEN: token},
