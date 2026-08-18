@@ -33,7 +33,7 @@ SENSORS: tuple[BicingSensorDescription, ...] = (
     BicingSensorDescription(
         key="ebikes",
         translation_key="ebikes",
-        icon="mdi:bike-electric",
+        icon="mdi:bicycle-electric",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda station: station.ebikes_available,
     ),
@@ -47,7 +47,7 @@ SENSORS: tuple[BicingSensorDescription, ...] = (
     BicingSensorDescription(
         key="available_docks",
         translation_key="available_docks",
-        icon="mdi:bike-parking",
+        icon="mdi:parking",
         state_class=SensorStateClass.MEASUREMENT,
         value_fn=lambda station: station.docks_available,
     ),
