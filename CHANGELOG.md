@@ -17,9 +17,28 @@
 **Full Changelog**: https://github.com/ocr99/ha-bicing/compare/v1.5.2...v1.5.3
 
 ## 1.5.2 - 2026-08-18
-
+ 
 <!-- Release notes generated using configuration in .github/release.yml at master -->
-
+ 
+### Entity ID normalization
+ 
+Home Assistant generates an `entity_id` from the translated entity name and
+device name the first time an entity is registered, so the resulting id
+could depend on the backend language and differ between installations.
+Bicing now normalizes it to a stable, language-independent metric suffix
+instead, for example:
+ 
+- `sensor.c_independencia_379_available_bikes`
+- `sensor.c_independencia_379_available_electric_bikes`
+- `sensor.c_independencia_379_available_mechanical_bikes`
+- `sensor.c_independencia_379_available_docks`
+The friendly (translated) entity name is unaffected — only the `entity_id`
+changes. The integration migrates existing Bicing entities in the entity
+registry automatically after the platform has registered them, so existing
+dashboards and automations pick up the new deterministic ids without
+deleting and recreating the integration. If a target entity id is already
+occupied, the existing id is left untouched and a warning is logged instead
+of overwriting it.
 
 
 **Full Changelog**: https://github.com/ocr99/ha-bicing/compare/v1.5.1...v1.5.2
