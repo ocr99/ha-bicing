@@ -9,7 +9,7 @@ Integració per a Home Assistant que mostra l'estat de les estacions del Bicing 
 
 > **Origen i atribució**
 > 
-> Aquest projecte és un **hard-fork** del repositori original [`oscarsanchezdm/bicing-hassio`](https://github.com/oscarsanchezdm/bicing-hassio), creat per **Òscar Sánchez de Mingo**. Aquesta versió incorpora canvis i manteniment propis sobre aquesta base, mantenint l'atribució i la llicència original.
+> Aquest projecte és un **hard-fork** del repositori original [`oscarsanchezdm/bicing-hassio`](https://github.com/oscarsanchezdm/bicing-hassio), creat per **oscarsanchezdm**. Aquesta versió incorpora canvis i manteniment propis sobre aquesta base, mantenint l'atribució i la llicència original.
 
 ## Funcionalitats
 
