@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.5.6 - 2026-08-18
+
+<!-- Release notes generated using configuration in .github/release.yml at master -->
+
+
+
+**Full Changelog**: https://github.com/ocr99/ha-bicing/compare/v1.5.5...v1.5.6
+
 ## 1.5.5 - 2026-08-18
 
 <!-- Release notes generated using configuration in .github/release.yml at master -->
