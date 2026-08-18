@@ -1,19 +1,41 @@
 changelog:
+  exclude:
+    labels:
+      - "skip-changelog"
+      - "invalid"
+      - "wontfix"
+      - "dependencies"
+
   categories:
+    - title: "💥 Breaking Changes"
+      labels:
+        - "breaking-change"
+        - "breaking change"
+
     - title: "🚀 Features"
       labels:
         - "feature"
         - "enhancement"
+
     - title: "🐛 Bug Fixes"
       labels:
         - "bug"
         - "fix"
-    - title: "🛠 Maintenance"
+
+    - title: "🔧 Refactor"
+      labels:
+        - "refactor"
+
+    - title: "📝 Documentation"
+      labels:
+        - "documentation"
+        - "docs"
+
+    - title: "🧰 Maintenance"
       labels:
         - "chore"
-        - "dependencies"
-        - "documentation"
-        - "refactor"
+        - "maintenance"
+
     - title: "Other Changes"
       labels:
         - "*"

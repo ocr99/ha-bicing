@@ -46,7 +46,7 @@ jobs:
           print(f"Preparing release v{version}")
           PY
 
-      - name: Check manifest version
+      - name: Validate manifest version
         env:
           VERSION: ${{ inputs.version }}
         run: |
@@ -67,36 +67,32 @@ jobs:
           current = json.loads(path.read_text(encoding="utf-8"))["version"]
           requested = os.environ["VERSION"].strip()
 
-          current_v = version_tuple(current)
-          requested_v = version_tuple(requested)
-
-          if requested_v < current_v:
+          if version_tuple(requested) < version_tuple(current):
               print(
                   f"Requested version {requested} is older than manifest version {current}.",
                   file=sys.stderr,
               )
               raise SystemExit(1)
 
-          if requested_v == current_v:
-              print(f"Manifest is already at {requested}; continuing (safe retry).")
-          else:
-              print(f"Manifest will be updated from {current} to {requested}.")
+          print(f"Current manifest version: {current}")
+          print(f"Requested release version: {requested}")
           PY
 
-      - name: Determine previous release tag
-        id: previous_tag
+      - name: Check tag and release do not conflict
         env:
+          GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
           TAG="v${VERSION}"
-          PREVIOUS_TAG="$(git tag --sort=-version:refname | grep -Fxv "$TAG" | head -n 1 || true)"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "previous=$PREVIOUS_TAG" >> "$GITHUB_OUTPUT"
-          echo "Current release tag: $TAG"
-          if [ -n "$PREVIOUS_TAG" ]; then
-            echo "Previous release tag: $PREVIOUS_TAG"
-          else
-            echo "No previous release tag found."
+
+          if git rev-parse --verify --quiet "refs/tags/${TAG}" >/dev/null; then
+            echo "Tag ${TAG} already exists. Refusing to recreate it."
+            exit 1
+          fi
+
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            echo "GitHub Release ${TAG} already exists. Refusing to recreate it."
+            exit 1
           fi
 
       - name: Update manifest version
@@ -117,73 +113,13 @@ jobs:
           )
           PY
 
-      - name: Generate GitHub release notes
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ inputs.version }}
-          PREVIOUS_TAG: ${{ steps.previous_tag.outputs.previous }}
-        run: |
-          TAG="v${VERSION}"
-
-          if [ -n "$PREVIOUS_TAG" ]; then
-            gh api "repos/${{ github.repository }}/releases/generate-notes" \
-              -f tag_name="$TAG" \
-              -f target_commitish="${{ github.ref_name }}" \
-              -f previous_tag_name="$PREVIOUS_TAG" \
-              --jq '.body' > release-notes.md
-          else
-            gh api "repos/${{ github.repository }}/releases/generate-notes" \
-              -f tag_name="$TAG" \
-              -f target_commitish="${{ github.ref_name }}" \
-              --jq '.body' > release-notes.md
-          fi
-
-          test -s release-notes.md
-          echo "Generated release notes:"
-          cat release-notes.md
-
-      - name: Update CHANGELOG.md (idempotent)
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          python - <<'PY'
-          import os
-          import re
-          from datetime import date
-          from pathlib import Path
-
-          version = os.environ["VERSION"].strip()
-          changelog = Path("CHANGELOG.md")
-          notes = Path("release-notes.md").read_text(encoding="utf-8").strip()
-          today = date.today().isoformat()
-
-          existing = changelog.read_text(encoding="utf-8") if changelog.exists() else "# Changelog\n"
-          if not existing.startswith("# Changelog"):
-              existing = "# Changelog\n\n" + existing
-
-          prefix = "# Changelog\n"
-          remainder = existing[len(prefix):].lstrip("\n")
-          section = f"## {version} - {today}\n\n{notes}\n\n"
-
-          pattern = re.compile(
-              rf"^##\s+{re.escape(version)}\s+-.*?(?=^##\s|\Z)",
-              re.MULTILINE | re.DOTALL,
-          )
-
-          if pattern.search(remainder):
-              remainder = pattern.sub(section.rstrip("\n"), remainder, count=1)
-          else:
-              remainder = section + remainder
-
-          changelog.write_text(prefix + "\n" + remainder.lstrip("\n"), encoding="utf-8")
-          PY
-
-      - name: Validate generated changes
+      - name: Validate generated files
         env:
           VERSION: ${{ inputs.version }}
         run: |
           python -m json.tool custom_components/bicing/manifest.json >/dev/null
           python -m json.tool custom_components/bicing/translations/es.json >/dev/null
+
           python - <<'PY'
           import json
           import os
@@ -191,6 +127,7 @@ jobs:
 
           with open("custom_components/bicing/manifest.json", encoding="utf-8") as file:
               version = json.load(file)["version"]
+
           expected = os.environ["VERSION"]
           if version != expected:
               print(
@@ -204,65 +141,125 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: |
-          python -m pip install --upgrade pip pytest pytest-homeassistant-custom-component
+          python -m pip install --upgrade pip
+          python -m pip install pytest pytest-homeassistant-custom-component
           pytest -q
 
       - name: Run Hassfest
         uses: home-assistant/actions/hassfest@master
 
-      - name: Commit release files (if needed)
+      - name: Commit release files
         env:
           VERSION: ${{ inputs.version }}
         run: |
           TAG="v${VERSION}"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add custom_components/bicing/manifest.json CHANGELOG.md
+
+          git add custom_components/bicing/manifest.json
 
           if git diff --cached --quiet; then
-            echo "No release file changes to commit; continuing (safe retry)."
+            echo "No release file changes to commit."
           else
             git commit -m "Release ${TAG}"
             git push origin "HEAD:${{ github.ref_name }}"
           fi
 
-      - name: Create or reuse tag (idempotent)
-        env:
-          VERSION: ${{ inputs.version }}
-        run: |
-          TAG="v${VERSION}"
-
-          if git rev-parse --verify --quiet "$TAG" >/dev/null; then
-            TAG_COMMIT="$(git rev-list -n 1 "$TAG")"
-            HEAD_COMMIT="$(git rev-parse HEAD)"
-
-            if [ "$TAG_COMMIT" != "$HEAD_COMMIT" ]; then
-              echo "Tag $TAG already exists but points to $TAG_COMMIT instead of HEAD $HEAD_COMMIT." >&2
-              echo "Refusing to move an existing release tag automatically." >&2
-              exit 1
-            fi
-
-            echo "Tag $TAG already exists and points to HEAD; continuing (safe retry)."
-          else
-            git tag -a "$TAG" -m "Release $TAG"
-            git push origin "$TAG"
-          fi
-
-      - name: Create or update GitHub Release (idempotent)
+      - name: Generate automatic release notes
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ inputs.version }}
         run: |
           TAG="v${VERSION}"
 
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "GitHub Release $TAG already exists; updating it instead of failing."
-            gh release edit "$TAG" \
-              --title "ha-bicing $TAG" \
-              --notes-file release-notes.md
+          gh api "repos/${{ github.repository }}/releases/generate-notes" \
+            -f tag_name="${TAG}" \
+            -f target_commitish="${{ github.ref_name }}" \
+            --jq '.body' > release-notes.md
+
+          test -s release-notes.md
+
+          echo "Generated release notes:"
+          cat release-notes.md
+
+      - name: Update CHANGELOG.md
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          from datetime import date
+          from pathlib import Path
+
+          version = os.environ["VERSION"].strip()
+          notes = Path("release-notes.md").read_text(encoding="utf-8").strip()
+          changelog = Path("CHANGELOG.md")
+
+          existing = (
+              changelog.read_text(encoding="utf-8")
+              if changelog.exists()
+              else "# Changelog\n"
+          )
+
+          if not existing.startswith("# Changelog"):
+              existing = "# Changelog\n\n" + existing
+
+          prefix = "# Changelog\n"
+          remainder = existing[len(prefix):].lstrip("\n")
+          section = f"## {version} - {date.today().isoformat()}\n\n{notes}\n\n"
+
+          pattern = re.compile(
+              rf"^##\s+{re.escape(version)}\s+-.*?(?=^##\s|\Z)",
+              re.MULTILINE | re.DOTALL,
+          )
+
+          if pattern.search(remainder):
+              remainder = pattern.sub(section.rstrip("\n"), remainder, count=1)
+          else:
+              remainder = section + remainder
+
+          changelog.write_text(
+              prefix + "\n" + remainder.lstrip("\n"),
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Commit CHANGELOG.md
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          TAG="v${VERSION}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add CHANGELOG.md
+
+          if git diff --cached --quiet; then
+            echo "No CHANGELOG changes to commit."
           else
-            gh release create "$TAG" \
-              --verify-tag \
-              --title "ha-bicing $TAG" \
-              --notes-file release-notes.md
+            git commit -m "docs: update CHANGELOG for ${TAG}"
+            git push origin "HEAD:${{ github.ref_name }}"
           fi
+
+      - name: Create tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          TAG="v${VERSION}"
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git push origin "${TAG}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          TAG="v${VERSION}"
+
+          gh release create "${TAG}" \
+            --verify-tag \
+            --title "ha-bicing ${TAG}" \
+            --notes-file release-notes.md
